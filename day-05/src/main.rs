@@ -14,9 +14,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let highest_seat_id = seat_ids.last().ok_or("empty input")?;
     println!("Part 1: {:#?}", highest_seat_id);
 
-    let possible_seat_range = seat_ids.windows(2).find(|pair| pair[1] - pair[0] == 2).ok_or("seat not found")?;
-    assert_eq!(possible_seat_range.len(), 2);
-    let my_seat_id = possible_seat_range.iter().sum::<u32>() / possible_seat_range.len() as u32;
+    let (next_seat_id, _) = seat_ids.windows(2).enumerate().find(|(_, pair)| pair[1] - pair[0] == 2).ok_or("seat not found")?;
+    let my_seat_id = next_seat_id - 1;
     println!("Part 2: {:#?}", my_seat_id);
 
     Ok(())
