@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, str::{Split, SplitN}, fs::read_to_string};
+use std::{collections::HashMap, error::Error, fs::read_to_string};
 
 type InnerBag = HashMap<String, usize>;
 type BagRuleset = HashMap<String, InnerBag>;
