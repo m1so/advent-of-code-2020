@@ -1,29 +1,30 @@
-use std::{error::Error, collections::HashMap, fs::read_to_string};
+use std::{collections::HashMap, error::Error, str::{Split, SplitN}, fs::read_to_string};
 
 type InnerBag = HashMap<String, usize>;
 type BagRuleset = HashMap<String, InnerBag>;
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let input = read_to_string("input/input1.txt")?;
 
     let bag_ruleset: BagRuleset = input.lines().map(|line| {
         let mut part_iter = line.split(" contain ");
-        let bag_name = normalize_bag_name(part_iter.next().unwrap());
-        let contents = part_iter.next().unwrap();
+        let bag_name = normalize_bag_name(advance_line_part(&mut part_iter)?);
+        let contents = advance_line_part(&mut part_iter)?;
 
         if contents.contains("no other bags") {
-            return (bag_name, InnerBag::new());
+            return Ok((bag_name, InnerBag::new()));
         }
         
         let inner_bags: InnerBag = contents[..contents.len()-1].split(", ").map(|inner_desc| {
             let mut inner_desc_iter = inner_desc.splitn(2, " ");
-            let count = inner_desc_iter.next().unwrap().parse::<usize>().unwrap();
-            let name = normalize_bag_name(inner_desc_iter.next().unwrap());
-            (name, count)
-        }).collect();
+            let count = advance_line_part(&mut inner_desc_iter)?.parse::<usize>()?;
+            let name = normalize_bag_name(advance_line_part(&mut inner_desc_iter)?);
+            Ok((name, count))
+        }).collect::<Result<InnerBag>>()?;
 
-        (bag_name, inner_bags)
-    }).collect();
+        Ok((bag_name, inner_bags))
+    }).collect::<Result<BagRuleset>>()?;
 
     let num_shiny_gold_bag_holders = bag_ruleset.values().filter(|inner_bag| contains_bag(&bag_ruleset, inner_bag, "shiny gold")).count();
     println!("Part 1: {}", num_shiny_gold_bag_holders);
@@ -48,4 +49,8 @@ fn bag_count(bag_ruleset: &BagRuleset, inner_bag: &InnerBag) -> usize {
 
 fn normalize_bag_name(bag_name: &str) -> String {
     bag_name.replace("bags", "").replace("bag", "").trim().to_string()
+}
+
+fn advance_line_part<'a>(iter: &mut impl Iterator<Item = &'a str>) -> Result<&'a str>  {
+    iter.next().ok_or("invalid line".into())
 }
