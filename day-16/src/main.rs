@@ -2,6 +2,8 @@ use std::{error::Error, fs::read_to_string};
 use parse_display::{Display, FromStr};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Ticket = Vec<u32>;
+type FieldCandidates = (usize, Vec<String>);
 
 #[derive(Display, FromStr, PartialEq, Debug)]
 #[display("{name}: {lower.0}-{lower.1} or {upper.0}-{upper.1}")]
@@ -19,7 +21,7 @@ impl Field {
     }
 }
 
-fn calculate_scanning_error_rate(nearby_tickets: Vec<Vec<u32>>, rules: &[Field]) -> u32 {
+fn calculate_scanning_error_rate(nearby_tickets: Vec<Ticket>, rules: &[Field]) -> u32 {
     nearby_tickets.iter()
         .filter_map(|values| {
             values.iter().find(|value| !rules.iter().any(|rule| rule.is_within_bounds(**value)))
@@ -27,8 +29,8 @@ fn calculate_scanning_error_rate(nearby_tickets: Vec<Vec<u32>>, rules: &[Field])
         .sum()
 }
 
-fn find_column_names(nearby_tickets: Vec<Vec<u32>>, rules: &[Field]) -> Vec<String> {
-    let valid_tickets: Vec<Vec<u32>> = nearby_tickets.iter()
+fn find_column_names(nearby_tickets: Vec<Ticket>, rules: &[Field]) -> Vec<String> {
+    let valid_tickets: Vec<Ticket> = nearby_tickets.iter()
         .filter_map(|values| {
             match values.iter().find(|value| !rules.iter().any(|rule| rule.is_within_bounds(**value))) {
                 None => Some(values.clone()),
@@ -37,11 +39,13 @@ fn find_column_names(nearby_tickets: Vec<Vec<u32>>, rules: &[Field]) -> Vec<Stri
         })
         .collect();
     
-    let columnar_values: Vec<Vec<u32>> = (0..valid_tickets[0].len())
+    // pivot the values
+    let columnar_values: Vec<Ticket> = (0..valid_tickets[0].len())
         .map(|i| valid_tickets.iter().map(|inner| inner[i]).collect())
         .collect();
     
-    let mut candidate_fields: Vec<(usize, Vec<String>)> = vec![(0, vec![]); columnar_values.len()];
+    // populate potential candidate fields
+    let mut candidate_fields: Vec<FieldCandidates> = vec![(0, vec![]); columnar_values.len()];
 
     for rule in rules {
         for (idx, column) in columnar_values.iter().enumerate() {
@@ -52,8 +56,8 @@ fn find_column_names(nearby_tickets: Vec<Vec<u32>>, rules: &[Field]) -> Vec<Stri
         }
     }
 
+    // sort candidates before pruning all possibilities
     candidate_fields.sort_by(|(_, a), (_, b)| a.len().cmp(&b.len()));
-
 
     for i in 0..candidate_fields.len() {
         if candidate_fields[i].1.len() != 1 { continue; }
@@ -68,6 +72,7 @@ fn find_column_names(nearby_tickets: Vec<Vec<u32>>, rules: &[Field]) -> Vec<Stri
         }
     }
 
+    // collect column names
     let mut column_names: Vec<Option<String>> = vec![None; columnar_values.len()];
 
     for (target_idx, values) in candidate_fields {
@@ -86,24 +91,28 @@ fn main() -> Result<()> {
         .map(|line| line.parse::<Field>().unwrap())
         .collect();
     
-    let my_ticket: Vec<u32> = parts[1].lines().skip(1).next().ok_or("invalid ticket")?
+    let my_ticket: Ticket = parts[1].lines().skip(1).next().ok_or("invalid ticket")?
         .split(",")
         .map(|n| n.parse().unwrap())
         .collect();
     
-    let nearby_tickets: Vec<Vec<u32>> = parts[2].lines()
+    let nearby_tickets: Vec<Ticket> = parts[2].lines()
         .skip(1)
         .map(|line| line.split(",").map(|n| n.parse().unwrap()).collect())
         .collect();
 
     println!("Part 1: {}", calculate_scanning_error_rate(nearby_tickets.clone(), &rules));
 
-    let part2: u64 = find_column_names(nearby_tickets.clone(), &rules).iter().enumerate().filter_map(|(idx, name)| {
-        match name.starts_with("departure") {
-            true => Some(my_ticket[idx] as u64),
-            false => None,
-        }
-    }).product();
+    let part2: u64 = find_column_names(nearby_tickets.clone(), &rules)
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, name)| {
+            match name.starts_with("departure") {
+                true => Some(my_ticket[idx] as u64),
+                false => None,
+            }
+        })
+        .product();
 
     println!("Part 2: {}", part2);
 
