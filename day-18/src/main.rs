@@ -7,7 +7,8 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Token {
     Value(u64),
-    Op(Operation),
+    Mult,
+    Add,
     LParen,
     RParen,
 }
@@ -33,7 +34,8 @@ impl Ast {
             match tokens.pop_front() {
                 // handle scalars and operators
                 Some(Token::Value(val)) => ast.push_back(Ast::Value(val)),
-                Some(Token::Op(op)) => ast.push_back(Ast::Op(op)),
+                Some(Token::Mult) => ast.push_back(Ast::Op(Operation::Mult)),
+                Some(Token::Add) => ast.push_back(Ast::Op(Operation::Add)),
                 // recurse into content of the parens
                 Some(Token::LParen) => ast.push_back(Ast::from_tokens(tokens)),
                 // stop recursing
@@ -49,8 +51,8 @@ impl Ast {
 fn tokenize(line: &str) -> VecDeque<Token> {
     line.chars().filter_map(|c| {
         match c {
-            '*' => Some(Token::Op(Operation::Mult)),
-            '+' => Some(Token::Op(Operation::Add)),
+            '*' => Some(Token::Mult),
+            '+' => Some(Token::Add),
             '(' => Some(Token::LParen),
             ')' => Some(Token::RParen),
             c if c.is_digit(10) => Some(Token::Value(c.to_digit(10).unwrap().into())),
